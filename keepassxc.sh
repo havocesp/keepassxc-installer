@@ -1,7 +1,5 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME.local/share"
-
 echo
 echo "  [KeePassXC]"
 echo
@@ -43,19 +41,31 @@ else
     echo " - [INFO] Todas las dependencias estan satisfechas."
 fi
 
-if [ "$#" -ne 1 ];then
+if [ $# -ne 1 ];then
     echo " - [WARN] Usando $INSTALL_DIR como directorio de instalación para KeePassXC."
+    INSTALL_DIR="$HOME/.local/share"
 else
     INSTALL_DIR="$1"
 fi
 
-if [ ! -d "$INSTALL_DIR" ];then
-    mkdir "$INSTALL_DIR"
+if [ -d "$INSTALL_DIR/keepassxc" ];then
+    echo " - [INFO] Detectada instalación anterior, intentando actualizarla."
+    echo " - [DEBUG] Entrando a $INSTALL_DIR"
+    cd "$INSTALL_DIR"
+    cd keepassxc
+    git pull > /dev/null
     if [ "$?" -ne 0 ];then
+        echo " - [ERROR] Fallo durante la descarga de datos desde GitHub."
+        exit 1
+    fi
+else
+
+    mkdir -p "$INSTALL_DIR"
+    if [ $? -ne 0 ];then
         echo " - [ERROR] No se pudo crear el directorio $INSTALL_DIR."
         exit 1
     fi
-    cd "$1"
+    cd "$INSTALL_DIR"
     git clone "https://github.com/keepassxreboot/keepassxc.git" > /dev/null
     if [ $? -ne 0 ];then
         echo " - [ERROR] Fallo durante la descarga de datos desde GitHub."
@@ -63,26 +73,19 @@ if [ ! -d "$INSTALL_DIR" ];then
     else
         cd keepassxc
     fi
-else
-    echo " - [INFO] Detectada instalación anterior, intentando actualizarla."
-    cd "$1/keepassxc"
-    git pull > /dev/nulls
-    if [ "$?" -ne 0 ];then
-        echo " - [ERROR] Fallo durante la descarga de datos desde GitHub."
-        exit 1
-    fi
+
 fi
 
 echo " - [INFO] Compilando ..."
-[ ! -d ] && mkdir build
+[ -d "$INSTALL_DIR/keepassxc/build" ] || mkdir build
 cd build
 cmake -DWITH_TESTS=OFF -DWITH_XC_HTTP=ON .. > /dev/null && make -j8 > /dev/null
 [ $? -ne 0 ] && exit 1
 
-# TODO comprobacines de que no falla la compilación
+# TODO permitir elegir opciones de compilación
 
 
 read -p "  - ¿Desea instalar KeePassXC para todos los usuarios (se usará sudo)? (S/N): " yesno
-if [ -n "$yesn"o ] && ([ "$yesno" == "S" ] || [ "$yesno" == "s" ]);then
+if [ -n "$yesno" ] && ([ "$yesno" == "S" ] || [ "$yesno" == "s" ]);then
     sudo make install > /dev/null
 fi
